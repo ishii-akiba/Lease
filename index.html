@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Lease Calculator | 免除規定判定機能付</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' blob:;">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --accent: #f43f5e;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(244, 63, 94, 0.05) 0%, transparent 40%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #818cf8, #fb7185);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            height: fit-content;
+        }
+
+        .method-toggle {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .method-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+
+        .method-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .btn-calc {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        .btn-calc:hover {
+            background: var(--primary-hover);
+        }
+
+        #exemptionNotice {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            display: none;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            border: 1px solid;
+        }
+
+        .notice-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .notice-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        th {
+            text-align: left;
+            color: var(--text-dim);
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .num {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .btn-small {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Smart Lease Calculator</h1>
+        <p style="color: var(--text-dim); font-size: 0.9rem;">実務対応：利息法・定額法 ＆ 免除規定診断</p>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <div class="method-toggle">
+                <button class="method-btn active" id="btnRisoku">利息法</button>
+                <button class="method-btn" id="btnTeigaku">定額法</button>
+            </div>
+
+            <div class="input-group">
+                <label>毎月のリース料(税抜)</label>
+                <input type="text" id="pmt" value="300,000" inputmode="numeric">
+            </div>
+
+            <div class="input-group">
+                <label>リース期間 (ヶ月)</label>
+                <input type="number" id="term" value="60" min="1" step="1">
+            </div>
+
+            <div class="input-group" id="rateContainer">
+                <label>追加利子率 (年率 %)</label>
+                <input type="number" id="rate" step="0.01" value="1.00" min="0">
+            </div>
+
+            <div class="input-group">
+                <label>開始日</label>
+                <input type="date" id="startDate">
+            </div>
+
+            <button class="btn-calc" id="btnCalculate">計算を実行</button>
+
+            <div id="exemptionNotice"></div>
+
+            <div class="actions">
+                <button class="btn-small" id="btnExportCSV">CSV出力</button>
+                <button class="btn-small" id="btnReset">リセット</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="resultPlaceholder" style="text-align: center; padding: 60px 0; color: var(--text-dim);">
+                計算を実行するとここにスケジュールが表示されます
+            </div>
+
+            <div id="resultArea" style="display: none;">
+                <div class="summary-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">当初測定額 (資産・負債)</span>
+                        <div class="stat-value" id="outAsset" style="color: var(--success);">¥0</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">利息相当額 合計</span>
+                        <div class="stat-value" id="outTotalInt">¥0</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">総支払額 (キャッシュ)</span>
+                        <div class="stat-value" id="outCash">¥0</div>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>回数</th>
+                                <th>年月</th>
+                                <th class="num">支払額</th>
+                                <th class="num">減価償却費</th>
+                                <th class="num">利息費用</th>
+                                <th class="num">債務残高</th>
+                                <th class="num">資産残高</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        "use strict"; // 厳格モードの適用
+
+        let currentMethod = 'risoku';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初期化処理
+            const today = new Date();
+            const startDateEl = document.getElementById('startDate');
+            startDateEl.value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            
+            const pmtInput = document.getElementById('pmt');
+            const initialVal = Number(pmtInput.value.replace(/,/g, ''));
+            if (!isNaN(initialVal)) {
+                pmtInput.value = initialVal.toLocaleString();
+            }
+
+            // カンマフォーマット制御
+            pmtInput.addEventListener('blur', (e) => {
+                const val = Number(e.target.value.replace(/,/g, ''));
+                if (!isNaN(val)) {
+                    e.target.value = val.toLocaleString();
+                }
+            });
+            pmtInput.addEventListener('focus', (e) => {
+                e.target.value = e.target.value.replace(/,/g, '');
+            });
+
+            // イベントリスナーの登録（インラインハンドラ廃止）
+            document.getElementById('btnRisoku').addEventListener('click', () => setMethod('risoku'));
+            document.getElementById('btnTeigaku').addEventListener('click', () => setMethod('teigaku'));
+            document.getElementById('btnCalculate').addEventListener('click', calculate);
+            document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+            document.getElementById('btnReset').addEventListener('click', resetForm);
+        });
+
+        function setMethod(method) {
+            currentMethod = method;
+            document.getElementById('btnRisoku').classList.toggle('active', method === 'risoku');
+            document.getElementById('btnTeigaku').classList.toggle('active', method === 'teigaku');
+            document.getElementById('rateContainer').style.display = (method === 'risoku') ? 'block' : 'none';
+        }
+
+        function calculate() {
+            // 入力値の取得と厳密な型チェック
+            const pmtStr = document.getElementById('pmt').value.replace(/,/g, '');
+            const pmt = parseFloat(pmtStr);
+            const term = parseInt(document.getElementById('term').value, 10);
+            const rateStr = document.getElementById('rate').value;
+            const annualRate = parseFloat(rateStr) / 100;
+            const startDateStr = document.getElementById('startDate').value;
+
+            // バリデーション
+            if (isNaN(pmt) || pmt <= 0) {
+                alert('有効な毎月のリース料を入力してください。');
+                return;
+            }
+            if (isNaN(term) || term <= 0) {
+                alert('有効なリース期間を入力してください。');
+                return;
+            }
+            if (currentMethod === 'risoku' && (isNaN(annualRate) || annualRate < 0)) {
+                alert('有効な利子率を入力してください。');
+                return;
+            }
+            if (!startDateStr) {
+                alert('開始日を入力してください。');
+                return;
+            }
+
+            const startDate = new Date(startDateStr);
+            if (isNaN(startDate.getTime())) {
+                alert('有効な日付を入力してください。');
+                return;
+            }
+
+            const monthlyRate = annualRate / 12;
+
+            // 免除規定判定
+            const noticeEl = document.getElementById('exemptionNotice');
+            noticeEl.style.display = 'block';
+            let noticeHtml = '';
+
+            const isShortTerm = (term <= 12);
+            const isLowValue = (pmt * term <= 700000);
+
+            // noticeHtml は固定文字列のみで構成されるため innerHTML を使用しても安全
+            if (isShortTerm || isLowValue) {
+                noticeEl.className = 'notice-success';
+                noticeHtml = '<strong>✅ 免除規定の対象となる可能性があります</strong><br>';
+                if (isShortTerm) noticeHtml += '・期間が12ヶ月以内のため「短期リース」に該当します。<br>';
+                if (isLowValue) noticeHtml += '・支払総額が少額のため「少額リース」の簡便処理が検討可能です。<br>';
+                noticeHtml += '（資産計上せず、従来通りの費用処理が認められる場合があります）';
+            } else {
+                noticeEl.className = 'notice-warning';
+                noticeHtml = '<strong>ℹ️ 原則処理（オンバランス）の対象です</strong><br>';
+                noticeHtml += '短期・少額の免除規定には該当しません。使用権資産およびリース債務の計上が必要です。';
+            }
+            noticeEl.innerHTML = noticeHtml;
+
+            // 計算ロジック
+            let initialLiab = (currentMethod === 'risoku')
+                ? Math.round(pmt * (1 - Math.pow(1 + monthlyRate, -term)) / monthlyRate)
+                : pmt * term;
+
+            const initialAsset = initialLiab;
+            const depMonth = initialAsset / term;
+            let currentLiab = initialLiab;
+            let currentAsset = initialAsset;
+            let html = '';
+            let totalInt = 0;
+
+            for (let i = 1; i <= term; i++) {
+                let interest = (currentMethod === 'risoku') ? Math.round(currentLiab * monthlyRate) : 0;
+                let principal = pmt - interest;
+                
+                if (i === term && currentMethod === 'risoku') {
+                    principal = currentLiab;
+                }
+
+                currentLiab -= principal;
+                currentAsset -= depMonth;
+                totalInt += interest;
+
+                const d = new Date(startDate);
+                d.setMonth(startDate.getMonth() + (i - 1));
+
+                // 組み込む変数は全て数値型およびDateオブジェクトからの生成値のため、XSSの心配はない
+                html += `<tr>
+                    <td>${i}</td>
+                    <td>${d.getFullYear()}/${d.getMonth() + 1}</td>
+                    <td class="num">${pmt.toLocaleString()}</td>
+                    <td class="num">${Math.round(depMonth).toLocaleString()}</td>
+                    <td class="num">${interest.toLocaleString()}</td>
+                    <td class="num">${Math.max(0, Math.round(currentLiab)).toLocaleString()}</td>
+                    <td class="num">${Math.max(0, Math.round(currentAsset)).toLocaleString()}</td>
+                </tr>`;
+            }
+
+            document.getElementById('resultPlaceholder').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'block';
+            document.getElementById('outAsset').textContent = '¥' + initialAsset.toLocaleString();
+            document.getElementById('outTotalInt').textContent = '¥' + totalInt.toLocaleString();
+            document.getElementById('outCash').textContent = '¥' + (pmt * term).toLocaleString();
+            document.getElementById('tableBody').innerHTML = html;
+        }
+
+        function exportCSV() {
+            const rows = [['回数', '年月', '支払額', '償却費', '利息', '債務残高', '資産残高']];
+            document.querySelectorAll('#tableBody tr').forEach(tr => {
+                rows.push(Array.from(tr.querySelectorAll('td')).map(td => {
+                    // CSVインジェクション防止策とカンマ除去
+                    let text = td.textContent.replace(/,/g, '');
+                    return text;
+                }));
+            });
+            // BOM(\uFEFF)を付与してExcelでの文字化けを防ぐ
+            const csvContent = "\uFEFF" + rows.map(r => r.join(",")).join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            
+            if (navigator.msSaveBlob) { // IE 10+ 対応用フォールバック
+                navigator.msSaveBlob(blob, "lease_report.csv");
+            } else {
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute("download", "lease_report.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        function resetForm() { 
+            location.reload(); 
+        }
+    </script>
+</body>
+</html>
